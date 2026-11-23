@@ -1,0 +1,371 @@
+{
+ "lede": "The letters-up Mind read the generated mini-language (12,477 sentences) or three public-domain children's books from raw letters, grew its own word vectors by Hebbian co-occurrence, and was then taught names by \u00b11 judgements from scripted teachers. Mind seeds 0\u20134 (identity codes only; the corpus order is fixed), with 95% bootstrap CIs over seeds. <b>Exploratory, not pre-registered.</b>",
+ "findings": [
+  {
+   "big": "4 of 4",
+   "text": "After one taught fact (<i>fish lives in water</i>), the Mind proposed the other lives-in facts itself and ended every seed with all 4 gold lives-in relations confirmed. First-round relation precision was 40%, against 20% for the most co-occurring (category, word) pairs. Its kind proposals were 100% right; over three judged rounds, 75% of all its proposals were confirmed.",
+   "tone": "win"
+  },
+  {
+   "big": "87%",
+   "text": "It sorts unknown strings by kind from letter statistics alone: 95% of made-up words and 95% of real but unseen English words were judged word-like, 83% of misspellings were recognised as variants of a known word, but only 65% of random letter strings were rejected as non-words (after reading the mini-language).",
+   "tone": "win"
+  },
+  {
+   "big": "91%",
+   "text": "The classical baselines are at ceiling on the mini-language and beat the Mind there. With one named word per category the Mind names 91% (95% CI 86\u201396) of held-out words (96% when it does not ask); SGNS vectors with the same single labels name 100%. Its own vectors give 1-NN 97.0% vs SGNS 99.4%, and in one-sentence fast mapping it names 51% vs 67% for additive SGNS.",
+   "tone": "loss"
+  }
+ ],
+ "tables": [
+  {
+   "title": "R1 \u00b7 Own embeddings vs classical baselines",
+   "note": "Leave-one-out k-NN category accuracy (cosine) over the world words present, and naming each held-out word by the nearest centroid of its category's 15 train words. Rare = held-out words read 1\u20135 times. Mean [95% bootstrap CI] over seeds 0\u20134. Chance = 1/17 \u2248 0.059. Books contain only 144/510 world words.",
+   "head": [
+    "arm",
+    "1-NN",
+    "5-NN",
+    "held-out naming",
+    "rare held-out",
+    "words"
+   ],
+   "rows": [
+    [
+     "grammar: SNI Reader (own Hebbian vectors)",
+     "0.970 [0.969, 0.971]",
+     "0.977 [0.973, 0.980]",
+     "0.976 [0.970, 0.982]",
+     "0.882 [0.847, 0.918]",
+     "510"
+    ],
+    [
+     "grammar: SGNS (backprop)",
+     "0.994 [0.993, 0.995]",
+     "0.996 [0.995, 0.996]",
+     "1.000 [1.000, 1.000]",
+     "1.000 [1.000, 1.000]",
+     "510"
+    ],
+    [
+     "grammar: random vectors",
+     "0.055 [0.050, 0.060]",
+     "0.051 [0.044, 0.056]",
+     "0.060 [0.048, 0.078]",
+     "0.047 [0.018, 0.071]",
+     "510"
+    ],
+    [
+     "grammar: PPMI-SVD (deterministic)",
+     "0.973",
+     "0.975",
+     "0.996",
+     "0.971",
+     "510"
+    ],
+    [
+     "books: SNI Reader (own Hebbian vectors)",
+     "0.256 [0.242, 0.269]",
+     "0.286 [0.267, 0.300]",
+     "0.287 [0.260, 0.313]",
+     "0.216 [0.195, 0.243]",
+     "144"
+    ],
+    [
+     "books: SGNS (backprop)",
+     "0.233 [0.217, 0.250]",
+     "0.236 [0.222, 0.254]",
+     "0.301 [0.266, 0.340]",
+     "0.216 [0.173, 0.243]",
+     "144"
+    ],
+    [
+     "books: random vectors",
+     "0.100 [0.090, 0.117]",
+     "0.103 [0.083, 0.122]",
+     "0.066 [0.048, 0.087]",
+     "0.054 [0.032, 0.081]",
+     "144"
+    ],
+    [
+     "books: PPMI-SVD (deterministic)",
+     "0.215",
+     "0.278",
+     "0.284",
+     "0.162",
+     "144"
+    ]
+   ]
+  },
+  {
+   "title": "R2 \u00b7 Names from \u00b11 with k examples per category",
+   "note": "All 255 held-out words. SNI: exam() accuracy (any answer), ask rate (verdict novel), precision when answering. Baselines get the SAME k labelled words the scripted teachers named. * Baseline selective accuracy at SNI's coverage (1 \u2212 ask rate), keeping its most confident answers by max cosine. AUROC: how well the confidence separates right from wrong answers (SNI: brain familiarity \u2212\u03b5\u2080; or verdict first, then familiarity \u2014 identical because the verdict is a threshold on the same \u2212\u03b5\u2080). n/a = no errors to separate. PPMI rows have zero spread: PPMI is deterministic and the teachers name the same k words every seed.",
+   "head": [
+    "arm",
+    "accuracy",
+    "asks",
+    "precision when answering",
+    "AUROC (familiarity / max cos)",
+    "AUROC (verdict\u2192fam)"
+   ],
+   "rows": [
+    [
+     "k=1 SNI Mind (\u00b11 teaching)",
+     "0.911 [0.864, 0.958]",
+     "0.181 [0.173, 0.191]",
+     "0.960 [0.924, 0.995]",
+     "0.885 [0.814, 0.956]",
+     "0.885 [0.814, 0.956]"
+    ],
+    [
+     "k=1 SGNS centroid",
+     "1.000 [1.000, 1.000]",
+     "0 (always answers)",
+     "1.000 [1.000, 1.000] *",
+     "n/a",
+     "\u2013"
+    ],
+    [
+     "k=1 PPMI-SVD centroid",
+     "0.992 [0.992, 0.992]",
+     "0 (always answers)",
+     "1.000 [1.000, 1.000] *",
+     "0.953 [0.953, 0.953]",
+     "\u2013"
+    ],
+    [
+     "k=2 SNI Mind (\u00b11 teaching)",
+     "0.934 [0.909, 0.958]",
+     "0.170 [0.158, 0.184]",
+     "0.973 [0.949, 0.995]",
+     "0.857 [0.757, 0.956]",
+     "0.857 [0.757, 0.956]"
+    ],
+    [
+     "k=2 SGNS centroid",
+     "1.000 [1.000, 1.000]",
+     "0 (always answers)",
+     "1.000 [1.000, 1.000] *",
+     "n/a",
+     "\u2013"
+    ],
+    [
+     "k=2 PPMI-SVD centroid",
+     "0.992 [0.992, 0.992]",
+     "0 (always answers)",
+     "1.000 [1.000, 1.000] *",
+     "0.953 [0.953, 0.953]",
+     "\u2013"
+    ],
+    [
+     "k=5 SNI Mind (\u00b11 teaching)",
+     "0.957 [0.952, 0.962]",
+     "0.150 [0.131, 0.173]",
+     "0.985 [0.981, 0.990]",
+     "0.928 [0.918, 0.937]",
+     "0.928 [0.918, 0.937]"
+    ],
+    [
+     "k=5 SGNS centroid",
+     "1.000 [1.000, 1.000]",
+     "0 (always answers)",
+     "1.000 [1.000, 1.000] *",
+     "n/a",
+     "\u2013"
+    ],
+    [
+     "k=5 PPMI-SVD centroid",
+     "0.988 [0.988, 0.988]",
+     "0 (always answers)",
+     "1.000 [1.000, 1.000] *",
+     "0.989 [0.989, 0.989]",
+     "\u2013"
+    ]
+   ]
+  },
+  {
+   "title": "R3 \u00b7 Knowing it doesn't know a form",
+   "note": "diagnose() wordlike label vs the expected one. Letter statistics do not depend on the Mind seed, so all 5 seeds give identical values (checked); no CI. Confusion column: labels given by the grammar reader.",
+   "head": [
+    "probe set",
+    "correct (after grammar)",
+    "correct (after books)",
+    "labels (grammar reader)"
+   ],
+   "rows": [
+    [
+     "made-up words (20) \u2192 plausible/unusual",
+     "95%",
+     "90%",
+     "plausible 15, unusual 4, no 1"
+    ],
+    [
+     "misspellings & unseen plurals (12) \u2192 variant",
+     "83%",
+     "33%",
+     "variant 9, plausible 3"
+    ],
+    [
+     "random letter strings (20) \u2192 no",
+     "65%",
+     "80%",
+     "no 13, unusual 6, plausible 1"
+    ],
+    [
+     "real unseen English words (40) \u2192 plausible/unusual",
+     "95%",
+     "80%",
+     "plausible 38, variant 2"
+    ],
+    [
+     "all 92",
+     "87%",
+     "76%",
+     "\u2013"
+    ]
+   ]
+  },
+  {
+   "title": "R4 \u00b7 Fast mapping from one sentence",
+   "note": "Per seed, 3 held-out words per category (51) are removed from the whole reading (every sentence containing them, \u22481260 sentences); then k=2 names per category; then one original sentence with the word is probed. The Mind's verdict was 'novel' (it flags the word as not understood) for 95% of probes; its guess_name is scored anyway. Baselines are trained on the same filtered corpus and named by the centroid of the same k=2 labelled words. Purity = share of the top-5 neighbours in the word's category (baseline candidates: corpus words read \u22652 times, minus gold function words). The vote row was added by the lead <b>after</b> seeing seeds 0\u20131, so it is post hoc and exploratory; it narrows but does not close the gap to additive SGNS.",
+   "head": [
+    "arm",
+    "naming accuracy",
+    "top-5 category purity"
+   ],
+   "rows": [
+    [
+     "SNI Mind: probe() guess_name",
+     "0.506 [0.475, 0.533]",
+     "0.444 [0.377, 0.497]"
+    ],
+    [
+     "SNI Mind: vote of its names for the 10 words it reads most like (post hoc)",
+     "0.573 [0.522, 0.627]",
+     "\u2013"
+    ],
+    [
+     "SGNS additive (sum of window-2 neighbours)",
+     "0.667 [0.616, 0.706]",
+     "0.274 [0.257, 0.293]"
+    ],
+    [
+     "PPMI-SVD additive",
+     "0.275 [0.220, 0.329]",
+     "0.002 [0.000, 0.005]"
+    ]
+   ]
+  },
+  {
+   "title": "R5 \u00b7 Connections it proposes after one taught fact",
+   "note": "After grammar + autoteach(2): teach_fact(fish, lives-in, water), then propose(10), then auto_judge(rounds=3) with gold \u00b11. Gold relations: is_a / has / lives_in from world.yaml (the lives-in proposals are scored against lives_in). Baseline ranks every (category noun, word) pair by its raw co-occurrence count in the Mind's own association memory, no cue. Relation rows are identical across seeds (checked): association counts and relation cues do not use the seed-dependent identity codes. Only names vary with the seed.",
+   "head": [
+    "measure",
+    "value",
+    "n"
+   ],
+   "rows": [
+    [
+     "first propose(10): relation precision vs gold",
+     "0.400 [0.400, 0.400]",
+     "5.0 [5.0, 5.0]"
+    ],
+    [
+     "first propose(10): kind precision vs gold",
+     "1.000 [1.000, 1.000]",
+     "6.0 [6.0, 6.0]"
+    ],
+    [
+     "baseline: top co-occurring (category noun, word) pairs, same n",
+     "0.200 [0.200, 0.200]",
+     "5.0 [5.0, 5.0]"
+    ],
+    [
+     "auto_judge(3): all proposals precision",
+     "0.750 [0.750, 0.750]",
+     "28.0 [28.0, 28.0]"
+    ],
+    [
+     "auto_judge(3): relation proposals precision",
+     "0.300 [0.300, 0.300]",
+     "10.0 [10.0, 10.0]"
+    ],
+    [
+     "baseline at the same number of relation proposals",
+     "0.200 [0.200, 0.200]",
+     "10.0 [10.0, 10.0]"
+    ],
+    [
+     "end: confirmed relations (correct)",
+     "4.0 [4.0, 4.0]",
+     "4.0 [4.0, 4.0]"
+    ],
+    [
+     "end: confirmed names (correct)",
+     "51.6 [51.2, 52.0]",
+     "51.6 [51.2, 52.0]"
+    ]
+   ]
+  },
+  {
+   "title": "R6 \u00b7 Segmenting the unspaced letter stream",
+   "note": "Letters only (spaces, line breaks and full stops removed). The first two rows per corpus never saw a space. The Mind's LetterMemory was trained by reading the SPACED text, so its word-internal statistics include where words end: it is not an unsupervised segmenter and the rows are not a like-for-like comparison. Deterministic (no seed dependence).",
+   "head": [
+    "segmenter",
+    "boundary F1",
+    "token F1",
+    "lexicon P / R"
+   ],
+   "rows": [
+    [
+     "grammar: branching entropy (unsupervised, no spaces ever)",
+     "0.764",
+     "0.480",
+     "0.159 / 0.497"
+    ],
+    [
+     "grammar: transitional-probability minima (unsupervised)",
+     "0.489",
+     "0.113",
+     "0.036 / 0.149"
+    ],
+    [
+     "grammar: Mind's LetterMemory, branching-entropy peaks (learned WITH spaces)",
+     "0.194",
+     "0.010",
+     "0.007 / 0.054"
+    ],
+    [
+     "grammar: Mind's LetterMemory, P(end of word) peaks (learned WITH spaces)",
+     "0.706",
+     "0.400",
+     "0.144 / 0.395"
+    ],
+    [
+     "books: branching entropy (unsupervised, no spaces ever)",
+     "0.770",
+     "0.474",
+     "0.263 / 0.296"
+    ],
+    [
+     "books: transitional-probability minima (unsupervised)",
+     "0.574",
+     "0.227",
+     "0.093 / 0.127"
+    ],
+    [
+     "books: Mind's LetterMemory, branching-entropy peaks (learned WITH spaces)",
+     "0.256",
+     "0.037",
+     "0.026 / 0.065"
+    ],
+    [
+     "books: Mind's LetterMemory, P(end of word) peaks (learned WITH spaces)",
+     "0.669",
+     "0.339",
+     "0.223 / 0.311"
+    ]
+   ]
+  }
+ ],
+ "disclosure": "<b>What each arm gets.</b> All arms read the same token stream: <code>lex/data/grammar_corpus.txt</code> or <code>books_corpus.txt</code>, one sentence per line, with no cross-sentence windows for baselines. The Mind starts from the alphabet; it learns letters, word forms and its 300-dimensional context vectors by local Hebbian rules, and names only from \u00b11 judgements. SGNS uses dim 100, window 2, 5 negatives, 15 epochs, minibatch SGD with backprop; PPMI-SVD uses window 2 and 100 dims; both see word tokens with spaces given. In R2 and R4 the baselines get exactly the same labelled words the scripted teachers named. In R4 they are retrained on the same filtered corpus. <b>Tuning:</b> none in this benchmark. The Mind runs the lead's demo configuration (theta_novel 3.9, theta_margin 0.5, centering_warmup 50, and the Reader defaults); the baseline settings were fixed before any evaluation and are identical to <code>lex/results/baselines.json</code>. <b>Ceiling:</b> in the generated grammar each category has predicates no other category uses, so one sentence identifies a word's category. SGNS names 100% of held-out words, so on this corpus the Mind can at best tie on naming accuracy. <b>Books:</b> only 144/510 world words occur in the books, very unevenly (1 sport, 3 instruments), so the book rows are diagnostics; there the Mind's own vectors (1-NN 25.6%) are on par with SGNS (23.3%). <b>Zero-variance rows are explained, not hidden:</b> the letter memory (R3, R6) and the relation machinery (R5 relation rows) do not depend on the seed-dependent identity codes, so they are identical across seeds by construction (checked in code); PPMI is deterministic. <b>R6 caveat:</b> the Mind's letter memory was trained on spaced text, so its segmentation is not an unsupervised result. Its own branching entropy peaks at the wrong places because end-of-word is a predicted symbol; P(end-of-word) peaks work better but still below unsupervised branching entropy. Five seeds give coarse CIs.<p>Post-hoc addition (lead, 2026-11-23): fast-mapping by neighbour-name vote (k = 10), chosen after inspecting seeds 0\u20131 of R4; reported as a separate row, per-seed values in <code>reader_per_seed/r4_vote_posthoc.json</code>.</p>"
+}

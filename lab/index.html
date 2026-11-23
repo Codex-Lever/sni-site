@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SNI Live Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a research instrument, precise and calm, with one living display.
+   IDEA: calcium imaging of a brain slice: memory cells light up as they form and fire.
+   PICTURE: the atlas, a 20k-word map of meaning where engrams glow at the words that made them.
+   COLOUR and TYPE: imaging black field, GCaMP green for engrams, violet for words, coral for facts; IBM Plex.
+   LAYOUT: title band with live counters; atlas left, the conversation with the brain right; evidence below. */
+:root{color-scheme:light;
+  --bg:light-dark(#ffffff,#0b0f0e);--ink:light-dark(#0f1a17,#e4ece8);--mute:light-dark(#5b6b66,#93a39d);
+  --line:light-dark(#dde4e1,#22302c);--panel:light-dark(#f3f6f4,#121917);
+  --field:#f6f7f3;--green:#4fe08a;--green-d:light-dark(#0f8a4a,#4fe08a);--violet:#b49cff;--violet-d:light-dark(#6a4fd6,#b49cff);
+  --coral:#ff8f6b;--coral-d:light-dark(#d4502a,#ff8f6b);--bad:light-dark(#c8352c,#ff6b5e);
+  --mono:"IBM Plex Mono",ui-monospace,monospace}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "IBM Plex Sans",system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(24px,3.6vw,56px) max(4vw,16px)}
+.wrap{max-width:1320px;margin:0 auto}
+h1{font-size:clamp(30px,4.2vw,50px);line-height:1.05;margin:6px 0 12px;font-weight:600;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:clamp(24px,2.6vw,32px);line-height:1.1;margin:0 0 10px;font-weight:600;text-wrap:balance}
+h3{font-size:17px;margin:0 0 6px;font-weight:600}
+p{margin:0 0 12px}.lede{font-size:18px;max-width:70ch;color:var(--mute)}
+.lede b{color:var(--ink);font-weight:600}
+.kicker{font-size:14px;color:var(--mute)}.kicker a{color:inherit}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.top{padding-bottom:18px}
+.meters{display:flex;flex-wrap:wrap;gap:8px 28px;margin-top:18px}
+.meter b{display:block;font:500 26px/1.1 var(--mono)}.meter span{font-size:13px;color:var(--mute)}
+.lab{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:18px;padding:0 max(4vw,16px) 28px;max-width:calc(1320px + 8vw);margin:0 auto}
+@media(max-width:960px){.lab{grid-template-columns:minmax(0,1fr)}}
+.atlas{position:relative;background:var(--field);border-radius:14px;overflow:hidden;height:clamp(520px,76vh,780px);color:#2c3a36}
+@media(max-width:600px){.atlas{height:440px}}
+.atlas canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
+.atlas .hud{position:absolute;left:14px;top:12px;right:14px;display:flex;justify-content:space-between;gap:10px;pointer-events:none;font-size:13px;color:#55655f}
+.atlas .hud b{color:#0f1a17;font-weight:500}
+.atlas .legend{position:absolute;left:14px;bottom:12px;display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:#9fb3ab;pointer-events:none}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
+.zoom{position:absolute;right:12px;bottom:10px;display:flex;gap:6px}
+.zoom button{width:36px;height:36px;border-radius:8px;border:1px solid #d3dbd7;background:#ffffff;color:#2c3a36;font-size:17px;cursor:pointer}
+#tip{position:absolute;pointer-events:none;background:#ffffffee;border:1px solid #d3dbd7;border-radius:8px;padding:6px 9px;font-size:13px;color:#0f1a17;box-shadow:0 4px 18px rgba(0,0,0,.08);display:none;max-width:260px}
+#boot{position:absolute;inset:0;display:grid;place-content:center;text-align:center;padding:20px;background:var(--field);z-index:3}
+#boot .bar{width:min(320px,70vw);height:4px;background:#dde4e1;border-radius:2px;margin:14px auto 8px;overflow:hidden}
+#boot .bar i{display:block;height:100%;width:5%;background:var(--green);transition:width .4s}
+#boot small{color:#55655f}
+.console{border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;background:var(--bg);height:clamp(520px,76vh,780px)}
+@media(max-width:960px){.console{height:auto;min-height:480px}.pane{max-height:none}}
+.tabs{display:flex;gap:2px;padding:6px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{flex:none;font:500 15px "IBM Plex Sans";padding:9px 13px;border:0;border-radius:8px;background:none;color:var(--mute);cursor:pointer;min-height:40px}
+.tabs button[aria-selected=true]{background:var(--panel);color:var(--ink)}
+.pane{padding:16px;display:none;flex:1;overflow:auto}.pane.on{display:block}
+.ask-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+input[type=text],select{font:16px "IBM Plex Sans";padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink);min-height:44px;width:100%}
+input[type=text]:focus,select:focus,button:focus-visible{outline:2px solid var(--green-d);outline-offset:1px}
+.btn{font:500 15px "IBM Plex Sans";min-height:44px;padding:0 16px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.btn.go{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.yes{background:var(--green-d);color:#fff;border-color:transparent}
+.btn.no{background:var(--bad);color:#fff;border-color:transparent}
+.btn:disabled{opacity:.45;cursor:default}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px}
+.chip{font:14px "IBM Plex Sans";padding:6px 10px;min-height:34px;border-radius:999px;border:1px solid var(--line);background:none;color:var(--ink);cursor:pointer}
+.frame-row{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:14px;color:var(--mute)}
+.frame-row select{flex:1}
+.reply{margin-top:14px;border-left:3px solid var(--green-d);padding:10px 0 10px 14px}
+.reply.asks{border-color:var(--violet-d)}.reply.wrong{border-color:var(--bad)}
+.say{font-size:21px;line-height:1.3;margin:0 0 8px;font-weight:500}
+.say em{font-style:normal;color:var(--green-d)}.reply.asks .say em{color:var(--violet-d)}
+.verdict{display:inline-block;font-size:13px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);margin-right:6px}
+.verdict.known{color:var(--green-d);border-color:currentColor}.verdict.novel{color:var(--violet-d);border-color:currentColor}.verdict.ambiguous{color:var(--coral-d);border-color:currentColor}
+.gauge{margin:12px 0 6px}.gauge .track{position:relative;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--green-d) 0 var(--th),var(--violet-d) var(--th) 100%);opacity:.85}
+.gauge .pin{position:absolute;top:-5px;width:3px;height:18px;background:var(--ink);border-radius:2px}
+.gauge .lbl{display:flex;justify-content:space-between;font-size:12.5px;color:var(--mute);margin-top:5px}
+.why{font-size:14px;color:var(--mute);margin:8px 0 0}
+.why li{margin:2px 0}.why code{font-family:var(--mono);font-size:13px;color:var(--ink)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.log{margin-top:18px;border-top:1px solid var(--line);padding-top:10px;font-size:14px}
+.log ol{list-style:none;margin:0;padding:0;max-height:220px;overflow:auto}
+.log li{padding:5px 0;border-bottom:1px dashed var(--line);display:grid;grid-template-columns:3.2em minmax(0,1fr);gap:8px}
+.log .f{font-family:var(--mono);font-weight:500}.log .p{color:var(--green-d)}.log .m{color:var(--bad)}
+.spark{height:46px;position:relative;margin:4px 0 10px}.spark svg{position:absolute;inset:0;width:100%;height:100%}
+.row2{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.note{font-size:14px;color:var(--mute)}
+table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+th{font-weight:500;color:var(--mute)}td.r,th.r{text-align:right}
+.ok{color:var(--green-d)}.bad{color:var(--bad)}
+.big{font:500 clamp(30px,4vw,44px)/1 var(--mono)}
+.evidence{border-top:1px solid var(--line)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 36px;margin-top:22px}
+@media(max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
+.fig{position:relative;min-height:280px}.fig>svg{position:absolute;inset:0;width:100%;height:100%}
+.keys{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--mute);margin:6px 0}
+.keys i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:3px}
+.findings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:20px}
+@media(max-width:820px){.findings{grid-template-columns:minmax(0,1fr)}}
+.finding{border-top:3px solid var(--line);padding-top:10px}.finding.win{border-color:var(--green-d)}.finding.loss{border-color:var(--coral-d)}
+details{margin-top:18px;font-size:14px;color:var(--mute)}summary{cursor:pointer;color:var(--ink)}
+.how{background:var(--panel)}
+.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;margin-top:18px}
+@media(max-width:820px){.steps{grid-template-columns:minmax(0,1fr)}}
+.steps b{display:block;font-size:17px;margin-bottom:4px}
+.rule{font:500 clamp(17px,2vw,22px) var(--mono);padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--bg);overflow-x:auto;margin:18px 0 8px}
+footer{font-size:14px;color:var(--mute)}footer a{color:inherit}
+.scroll{overflow-x:auto}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+@media(max-width:600px){table{font-size:13px}}
+</style>
+</head>
+<body>
+<header class="band top"><div class="wrap">
+  <div class="kicker">CodexLever · Synthetic Neurodynamic Intelligence (SNI) · research prototype v1</div>
+  <h1>A brain that learns words from “yes” and “no”</h1>
+  <p class="lede">No backpropagation, no pre-training, no LLM. Every memory is an explicit <b>engram</b> you can see, query and cut. It learns only from your ±1 judgements, with local plasticity rules, and it <b>asks</b> when it meets something it does not know. This is the real research engine (<span class="num" id="englines">2,849</span> lines of Python) running in your browser through WebAssembly.</p>
+  <div class="meters" id="meters"></div>
+</div></header>
+
+<main class="lab">
+  <section class="atlas" aria-label="Atlas of the brain's memory">
+    <canvas id="cv"></canvas>
+    <div class="hud"><span>Map of meaning · <b class="num" id="vocabn">20,207</b> words (frozen GloVe, never trained)</span><span id="hudr"></span></div>
+    <div class="legend">
+      <span><i class="dot" style="background:#12924f"></i>engram (a memory of one word)</span>
+      <span><i class="dot" style="background:#6a4fd6"></i>learned word</span>
+      <span><i class="dot" style="background:#d4502a"></i>learned fact</span>
+      <span>ring = consolidated by 3 teachers</span>
+    </div>
+    <div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" aria-label="Fit to memory">⤢</button></div>
+    <div id="tip"></div>
+    <div id="boot"><div><b>Booting the brain</b><div class="bar"><i id="bootbar"></i></div><small id="bootmsg">Loading Python (Pyodide)…</small></div></div>
+  </section>
+
+  <section class="console" aria-label="Talk to the brain">
+    <div class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-t="teach">Teach</button>
+      <button role="tab" aria-selected="false" data-t="exam">Exam</button>
+      <button role="tab" aria-selected="false" data-t="edit">Edit</button>
+      <button role="tab" aria-selected="false" data-t="sleep">Sleep</button>
+      <button role="tab" aria-selected="false" data-t="inside">Inside</button>
+    </div>
+
+    <div class="pane on" id="p-teach">
+      <form class="ask-row" id="qform"><input type="text" id="qword" placeholder="Show it a word, e.g. lion" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Word to show the brain"><button class="btn go" id="qbtn">Show</button></form>
+      <div class="frame-row"><label for="frame">Ask</label><select id="frame">
+        <option value="WHAT-IS">What is it?</option>
+        <option value="IS-A">What kind of thing is it? (2 hops)</option>
+        <option value="IS-A-2">…and what is that? (3 hops)</option>
+        <option value="HAS">What does it have? (2 hops)</option>
+        <option value="LIVES-IN">Where does it live? (2 hops)</option>
+        <option value="IS-A/word">About a learned word: is a…?</option>
+        <option value="HAS/word">About a learned word: has…?</option>
+      </select></div>
+      <div class="chips" id="sugg"></div>
+      <div id="reply"></div>
+      <div class="log"><div style="display:flex;justify-content:space-between;align-items:baseline"><h3>Its own answers, right vs wrong</h3><span class="note" id="acc"></span></div>
+        <div class="spark"><svg id="spark"></svg></div>
+        <ol id="log"></ol>
+        <div class="row2">
+          <button class="btn" id="auto">Autopilot · 30 rounds</button>
+          <select id="autocat" aria-label="Categories for the autopilot" style="width:auto;flex:1"></select>
+        </div>
+        <div class="row2"><button class="btn" id="facts">Teach category facts</button><button class="btn" id="fresh">Empty brain</button><button class="btn" id="starter">Starter brain</button></div>
+        <p class="note" style="margin-top:8px">Autopilot = three scripted teachers who know the answers and only ever say ±1 (or a word when the brain asks). Same channel as you.</p>
+      </div>
+    </div>
+
+    <div class="pane" id="p-exam">
+      <h3>Held-out exam</h3>
+      <p class="note">Words the brain has never been shown, from every category it has a name for, plus words from categories it was never taught. Read-only: the exam changes nothing in memory.</p>
+      <button class="btn go" id="runexam">Run the exam</button>
+      <div id="examout"></div>
+    </div>
+
+    <div class="pane" id="p-edit">
+      <h3>Surgery on a single memory</h3>
+      <p class="note">Every answer is a readable path through explicit edges, so the effect of cutting one edge can be computed before you cut it, and only answers that use it change. Pick an edge (or click a learned word on the map).</p>
+      <select id="edges" aria-label="Edge to cut"></select>
+      <div class="row2"><button class="btn go" id="cut">Predict, then cut</button><button class="btn" id="restore" disabled>Restore it</button></div>
+      <div id="editout"></div>
+    </div>
+
+    <div class="pane" id="p-sleep">
+      <h3>Offline consolidation</h3>
+      <p class="note">Sleep replays memory offline: merges redundant engrams, downscales unconfirmed edges, prunes what fell below threshold. Edges that three different teachers confirmed are consolidated and protected. It also runs on its own every 50 judgements.</p>
+      <button class="btn go" id="dosleep">Sleep now</button>
+      <div id="sleepout"></div>
+    </div>
+
+    <div class="pane" id="p-inside">
+      <h3>Locality audit, run live in your browser</h3>
+      <p class="note">Every change to a learned number goes through a registered update function. The audit checks each one, statically and with randomized probes, reads only its own pre/post activity, its own parameters, its own eligibility trace and the global modulator. No gradients, no global loss.</p>
+      <button class="btn go" id="runaudit">Run the audit</button>
+      <div id="auditout"></div>
+      <h3 style="margin-top:18px">What you can and cannot do to it</h3>
+      <p class="note">The engine's public interface has no method that writes a label, a fact or a target into memory. You can show it a word, answer its question, and say +1 or −1. That's all.</p>
+      <div id="cfgout" class="note"></div>
+    </div>
+  </section>
+</main>
+
+<section class="band evidence"><div class="wrap">
+  <h2 id="evtitle">The evidence, measured on the same engine</h2>
+  <p class="lede" id="evlede">Loading the benchmark…</p>
+  <div class="findings" id="findings"></div>
+  <div class="grid">
+    <div><h3>Learning 17 categories one task after another, no replay</h3><p class="note">Held-out accuracy over every category seen so far, after each of 5 tasks.</p><div class="keys" id="k1"></div><div class="fig"><svg id="c1"></svg></div></div>
+    <div><h3>Learning from ±1 only, one pass over the data</h3><p class="note">Held-out accuracy, 17 categories interleaved. The bandit MLP gets exactly the brain's signal.</p><div class="keys" id="k2"></div><div class="fig"><svg id="c2"></svg></div></div>
+    <div><h3>Knowing what it does not know</h3><p class="note">AUROC of telling held-out words of 12 taught categories from words of 5 never-taught ones.</p><div class="scroll" id="t3"></div></div>
+    <div><h3>Editing one memory, and only that memory</h3><p class="note">Random “named” edges cut on a trained brain: which answers change, and can the edit be undone?</p><div id="t4"></div></div>
+  </div>
+  <details id="disc"><summary>Setup and comparison disclosure</summary><div id="disctext"></div></details>
+</div></section>
+
+<section class="band how"><div class="wrap">
+  <h2>How it works</h2>
+  <p class="lede">Intelligence as the self-organisation of explicit memory under prediction error and local plasticity, not as gradient descent on static weights.</p>
+  <div class="steps">
+    <div><b>1 · Perceive</b>A word arrives as a frozen vector (GloVe). Perception never learns; it is only the senses.</div>
+    <div><b>2 · Match or ask</b>Engrams compete to explain the input. If none does, the novelty profile says “novel” and the brain asks you what it is.</div>
+    <div><b>3 · Propose</b>Your word is not written into memory. It becomes a proposition the brain says back, which you must confirm with +1.</div>
+    <div><b>4 · Local plasticity</b>A ±1, scaled by surprise and teacher reliability, updates only the edges on the answer's path. New engrams and edges form only on a confirmed proposal.</div>
+  </div>
+  <div class="rule">Δθ = F(u<sub>pre</sub>, u<sub>post</sub>, θ, e<sub>θ</sub>, m<sub>t</sub>)</div>
+  <p class="note">The SNI Locality Rule: every learned quantity changes only from its own pre- and post-synaptic activity, its own value, its own eligibility trace and one global modulator m<sub>t</sub> (the teacher's ±1, surprise, reliability). Audited in CI and in the Inside tab.</p>
+</div></section>
+
+<footer class="band"><div class="wrap">
+  <p>SNI is an independent research program of <a href="https://github.com/Codex-Lever">CodexLever</a> (PI: Rafael, <a href="https://github.com/kyronsatt">github.com/kyronsatt</a>). Engine: Python + NumPy, run here unmodified with Pyodide. Perception: GloVe 6B 100-d vectors (Pennington, Socher and Manning, 2014; PDDL 1.0), 20k most frequent words, int8. The benchmark numbers are exploratory, not a confirmed result of the pre-registered program.</p>
+  <p class="num" id="build"></p>
+</div></footer>
+
+<script src="/py/pyodide.js"></script>
+<script>
+{
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pct = x => x == null ? '–' : Math.round(x * 100) + '%';
+const FRAME_Q = {'WHAT-IS':'What is it?','IS-A':'What kind of thing is it?','IS-A-2':'…and what is that?','HAS':'What does it have?','LIVES-IN':'Where does it live?','IS-A/word':'is a…?','HAS/word':'has…?'};
+const REL_TXT = {named:'is a', 'is-a':'is a kind of', has:'has', 'lives-in':'lives in'};
+const STARTER = ['mammal','bird','fish','fruit','vehicle','instrument'];
+let py, callPy, G = {nodes:[],edges:[],stats:{},history:[]}, VOCAB = [], VIDX = new Map(), MAP = null, CATS = null;
+let state = {mode:'idle', last:null, cut:null}, pulse = {t:0, word:null, near:[], trace:[]};
+
+const DIAG = [];
+window.addEventListener('securitypolicyviolation', e => { DIAG.push('blocked by the page security policy: ' + e.violatedDirective + ' ' + (e.blockedURI || '')); const m = document.querySelector('#bootmsg'); if (m) m.textContent = DIAG.at(-1); });
+window.addEventListener('error', e => DIAG.push('error: ' + e.message));
+window.addEventListener('unhandledrejection', e => DIAG.push('rejected: ' + (e.reason && e.reason.message || e.reason)));
+const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(what + ' did not finish in ' + ms / 1000 + ' s. ' + (DIAG.length ? DIAG.slice(-3).join(' | ') : 'No error was reported; the host may be blocking WebAssembly.'))), ms))]);
+const boot = (p, msg) => { $('#bootbar').style.width = p + '%'; $('#bootmsg').textContent = msg; };
+function call(m, a = {}) {
+  const r = JSON.parse(callPy(m, JSON.stringify(a)));
+  if (!r.ok) throw new Error(r.error);
+  return r.result;
+}
+
+async function start() {
+  try {
+    boot(8, 'Loading Python (Pyodide)…');
+    if (typeof loadPyodide === 'undefined') throw new Error('The Python runtime (py/pyodide.js) did not load. ' + DIAG.join(' | '));
+    py = await withTimeout(loadPyodide({indexURL: new URL('/py/', location.href).href, stderr: t => DIAG.push(t)}), 60000, 'Loading Python');
+    boot(35, 'Loading NumPy…');
+    await withTimeout(py.loadPackage(['numpy', 'pyyaml']), 90000, 'Loading NumPy');
+    boot(60, 'Loading the engine and the frozen word vectors…');
+    const get = f => fetch(f).then(r => { if (!r.ok) throw new Error(f + ' ' + r.status); return r; });
+    const b64 = t => Uint8Array.from(atob(t), c => c.charCodeAt(0));
+    const [bundle, vec, man] = await Promise.all([get('bundle.json').then(r => r.json()), get('vectors.json').then(r => r.json()),
+      get('manifest.json').then(r => r.json()).catch(() => null)]);
+    const i8 = b64(vec.i8), sc = b64(vec.scale), vocab = JSON.stringify(vec.vocab), map = b64(vec.map).buffer;
+    for (const [p, src] of Object.entries(bundle)) {
+      py.FS.mkdirTree('/app/' + p.split('/').slice(0, -1).join('/'));
+      py.FS.writeFile('/app/' + p, src);
+    }
+    py.FS.mkdirTree('/app/lab/data');
+    py.FS.writeFile('/app/lab/data/glove100.i8', i8);
+    py.FS.writeFile('/app/lab/data/glove100.scale.f32', sc);
+    py.FS.writeFile('/app/lab/data/glove100.vocab.json', vocab);
+    VOCAB = JSON.parse(vocab); VOCAB.forEach((w, i) => VIDX.set(w, i)); MAP = new Uint16Array(map);
+    if (man) { $('#englines').textContent = man.engine_lines.toLocaleString(); $('#build').textContent = 'engine bundle sha256 ' + man.bundle_sha + ' · ' + man.files.length + ' source files'; }
+    $('#vocabn').textContent = VOCAB.length.toLocaleString();
+    boot(80, 'Waking the brain…');
+    py.runPython("import sys; sys.path.insert(0, '/app'); from lab.sni_lab import call");
+    callPy = py.globals.get('call');
+    call('reset', {seed: 0});
+    CATS = call('categories');
+    $('#autocat').innerHTML = '<option value="">all 17 categories</option>' + CATS.categories.map(c => `<option>${c}</option>`).join('');
+    boot(92, 'Growing a starter brain: 6 categories, 3 scripted teachers…');
+    await new Promise(r => setTimeout(r, 30));
+    grow(STARTER);
+    $('#boot').style.display = 'none';
+    fit(true);
+  } catch (e) {
+    $('#bootmsg').textContent = 'Could not start: ' + e.message;
+  }
+}
+
+function refresh() { G = call('graph'); layout(); meters(); spark(); edgeList(); suggestions(); draw(); }
+function grow(cats) { const r = call('grow', {categories: cats, n: 150}); refresh(); logAuto(r.autopilot.length + r.facts.length, 'Starter brain grown: ' + cats.join(', ')); }
+
+function meters() {
+  const s = G.stats;
+  const m = [['engrams', s.percepts], ['words', s.words], ['edges', s.edges], ['consolidated', s.consolidated], ['±1 judgements', s.plus + s.minus], ['memory', s.memory_kb + ' KB']];
+  $('#meters').innerHTML = m.map(([k, v]) => `<div class="meter"><b>${typeof v === 'number' ? v.toLocaleString() : v}</b><span>${k}</span></div>`).join('');
+  $('#hudr').innerHTML = `<b class="num">${s.percepts}</b> engrams · <b class="num">${s.words}</b> words`;
+}
+
+/* ---------- atlas ---------- */
+const cv = $('#cv'), ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1, view = {x: .5, y: .5, k: 1}, base = null, pos = new Map(), target = null;
+function wxy(i) { return [MAP[2 * i] / 65535, MAP[2 * i + 1] / 65535]; }
+function toScreen(x, y) { const s = Math.min(W, H) * view.k; return [W / 2 + (x - view.x) * s, H / 2 + (y - view.y) * s]; }
+function toWorld(sx, sy) { const s = Math.min(W, H) * view.k; return [(sx - W / 2) / s + view.x, (sy - H / 2) / s + view.y]; }
+function resize() {
+  const r = cv.getBoundingClientRect(); DPR = devicePixelRatio || 1; W = r.width; H = r.height;
+  cv.width = W * DPR; cv.height = H * DPR; base = null; draw();
+}
+new ResizeObserver(resize).observe(cv);
+function baseLayer() {
+  base = document.createElement('canvas'); base.width = cv.width; base.height = cv.height;
+  const b = base.getContext('2d'); b.scale(DPR, DPR); b.fillStyle = 'rgba(40,80,66,.16)';
+  const r = Math.max(1, Math.min(2, view.k * .45));
+  for (let i = 0; i < VOCAB.length; i++) { const [x, y] = toScreen(...wxy(i)); if (x > -2 && y > -2 && x < W + 2 && y < H + 2) b.fillRect(x, y, r, r); }
+}
+function layout() {
+  pos = new Map(); const byId = new Map(G.nodes.map(n => [n.id, n]));
+  for (const n of G.nodes) if (n.kind === 'percept' && n.word && VIDX.has(n.word)) pos.set(n.id, wxy(VIDX.get(n.word)));
+  const kids = new Map();
+  for (const e of G.edges) { if (!kids.has(e.dst)) kids.set(e.dst, []); kids.get(e.dst).push(e); }
+  const words = G.nodes.filter(n => n.kind === 'word');
+  for (const n of words) {
+    const named = (kids.get(n.id) || []).filter(e => e.rel === 'named').map(e => pos.get(e.src)).filter(Boolean);
+    if (named.length) pos.set(n.id, [named.reduce((a, p) => a + p[0], 0) / named.length, named.reduce((a, p) => a + p[1], 0) / named.length - .012]);
+  }
+  for (let pass = 0; pass < 3; pass++) for (const n of words) {
+    if (pos.has(n.id)) continue;
+    if (VIDX.has(n.label)) { pos.set(n.id, wxy(VIDX.get(n.label))); continue; }
+    const src = (kids.get(n.id) || []).map(e => pos.get(e.src)).filter(Boolean);
+    if (src.length) pos.set(n.id, [src.reduce((a, p) => a + p[0], 0) / src.length, src.reduce((a, p) => a + p[1], 0) / src.length - .03]);
+  }
+}
+function fit(jump) {
+  const pts = [...pos.values()];
+  if (!pts.length) target = {x: .5, y: .5, k: 1};
+  else { let x0 = 1, y0 = 1, x1 = 0, y1 = 0; for (const [x, y] of pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+    const m = Math.min(W, H), bw = Math.max(x1 - x0, .03) + .06, bh = Math.max(y1 - y0, .03) + .08;
+    const k = .86 * Math.min(W / (bw * m), (H - 70) / (bh * m));
+    target = {x: (x0 + x1) / 2, y: (y0 + y1) / 2 - 10 / (m * Math.max(1, k)), k: Math.max(1, Math.min(14, k))}; }
+  if (jump) { view = {...target}; target = null; base = null; draw(); } else animate();
+}
+let raf = 0;
+function animate() { if (!raf) raf = requestAnimationFrame(tick); }
+function tick() {
+  raf = 0; let more = false;
+  if (target) { for (const k of ['x', 'y', 'k']) view[k] += (target[k] - view[k]) * .18; base = null;
+    if (Math.abs(view.k - target.k) < .002 && Math.abs(view.x - target.x) < .0005 && Math.abs(view.y - target.y) < .0005) { view = {...target}; target = null; } else more = true; }
+  if (pulse.t > 0) { pulse.t = Math.max(0, pulse.t - .016); more = true; }
+  draw(); if (more) animate();
+}
+function draw() {
+  if (!W || !MAP) return;
+  if (!base) baseLayer();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.drawImage(base, 0, 0);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const byId = new Map(G.nodes.map(n => [n.id, n])), hot = new Set(pulse.trace.map(t => t.id));
+  for (const e of G.edges) {
+    const a = pos.get(e.src), b = pos.get(e.dst); if (!a || !b) continue;
+    const [x1, y1] = toScreen(...a), [x2, y2] = toScreen(...b);
+    const fact = e.rel !== 'named', on = hot.has(e.id);
+    ctx.strokeStyle = e.lesioned ? 'rgba(200,53,44,.85)' : on ? (fact ? '#b3401c' : '#0b6b38') : fact ? 'rgba(212,80,42,.55)' : 'rgba(18,146,79,' + (.12 + .4 * Math.min(1, e.w * 3)) + ')';
+    ctx.lineWidth = on ? 2.4 : fact ? 1.4 : .8; ctx.setLineDash(e.lesioned ? [4, 4] : []);
+    ctx.beginPath(); ctx.moveTo(x1, y1);
+    if (fact) { const mx = (x1 + x2) / 2, my = (y1 + y2) / 2 - Math.hypot(x2 - x1, y2 - y1) * .25; ctx.quadraticCurveTo(mx, my, x2, y2); } else ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  for (const n of G.nodes) if (n.kind === 'percept') {
+    const p = pos.get(n.id); if (!p) continue; const [x, y] = toScreen(...p);
+    const near = pulse.near.includes(n.id) && pulse.t > 0, r = 2.6 + 3 * Math.min(1, n.s);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r * (near ? 5 : 3.2));
+    g.addColorStop(0, near ? 'rgba(18,146,79,.75)' : 'rgba(18,146,79,.42)'); g.addColorStop(1, 'rgba(18,146,79,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * (near ? 5 : 3.2), 0, 7); ctx.fill();
+    ctx.fillStyle = '#0b6b38'; ctx.beginPath(); ctx.arc(x, y, r * .55, 0, 7); ctx.fill();
+    if (view.k > 2.2 && n.word) { ctx.fillStyle = 'rgba(30,45,40,.75)'; ctx.font = '11px IBM Plex Sans'; ctx.fillText(n.word, x + 5, y + 3); }
+  }
+  ctx.font = '500 13px IBM Plex Sans'; ctx.textBaseline = 'middle';
+  const labs = [];
+  for (const n of G.nodes) if (n.kind === 'word') {
+    const p = pos.get(n.id); if (!p) continue; const [x, y] = toScreen(...p);
+    const isFact = G.edges.some(e => e.dst === n.id && e.rel !== 'named') && !G.edges.some(e => e.dst === n.id && e.rel === 'named');
+    labs.push({n, x, y, ax: x, ay: y, w: ctx.measureText(n.label).width + 14, isFact});
+  }
+  for (let it = 0; it < 60; it++) { let moved = false;
+    for (let i = 0; i < labs.length; i++) for (let j = i + 1; j < labs.length; j++) {
+      const A = labs[i], B = labs[j], ox = (A.w + B.w) / 2 + 4 - Math.abs(A.x - B.x), oy = 26 - Math.abs(A.y - B.y);
+      if (ox > 0 && oy > 0) { moved = true; if (oy < ox) { const d = (A.y <= B.y ? -1 : 1) * oy / 2; A.y += d; B.y -= d; } else { const d = (A.x <= B.x ? -1 : 1) * ox / 2; A.x += d; B.x -= d; } } }
+    if (!moved) break; }
+  for (const L of labs) {
+    const {n, x, y, w: tw, isFact} = L, sel = state.cutWord === n.id;
+    if (Math.hypot(x - L.ax, y - L.ay) > 6) { ctx.strokeStyle = 'rgba(106,79,214,.35)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(L.ax, L.ay); ctx.lineTo(x, y); ctx.stroke(); }
+    ctx.fillStyle = isFact ? '#fff0ea' : '#efeaff'; ctx.strokeStyle = sel ? '#0f1a17' : isFact ? '#d4502a' : '#6a4fd6'; ctx.lineWidth = sel ? 2 : 1;
+    ctx.beginPath(); ctx.roundRect(x - tw / 2, y - 11, tw, 22, 11); ctx.fill(); ctx.stroke();
+    if (n.consolidated) { ctx.beginPath(); ctx.roundRect(x - tw / 2 - 3, y - 14, tw + 6, 28, 14); ctx.stroke(); }
+    ctx.fillStyle = isFact ? '#8a2d12' : '#3b2a8c'; ctx.textAlign = 'center'; ctx.fillText(n.label, x, y + 1); ctx.textAlign = 'left';
+    L.n.sx = x; L.n.sy = y;
+  }
+  if (pulse.word && VIDX.has(pulse.word)) {
+    const [x, y] = toScreen(...wxy(VIDX.get(pulse.word))), t = pulse.t;
+    for (const id of pulse.near.slice(0, 3)) { const p = pos.get(id); if (!p) continue; const [a, b] = toScreen(...p); ctx.strokeStyle = 'rgba(15,26,23,.35)'; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(a, b); ctx.stroke(); }
+    ctx.setLineDash([]); ctx.strokeStyle = 'rgba(15,26,23,' + (.3 + .6 * t) + ')'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, y, 6 + (1 - t) * 26, 0, 7); ctx.stroke();
+    ctx.fillStyle = '#0f1a17'; ctx.beginPath(); ctx.arc(x, y, 3.5, 0, 7); ctx.fill();
+    ctx.font = '500 14px IBM Plex Sans'; ctx.fillText(pulse.word, x + 9, y - 9);
+  }
+}
+let drag = null;
+cv.addEventListener('pointerdown', e => { drag = {x: e.offsetX, y: e.offsetY, v: {...view}, moved: false}; cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointermove', e => {
+  if (drag) { const dx = e.offsetX - drag.x, dy = e.offsetY - drag.y; if (Math.hypot(dx, dy) > 3) drag.moved = true;
+    if (drag.moved) { const s = Math.min(W, H) * view.k; view.x = drag.v.x - dx / s; view.y = drag.v.y - dy / s; target = null; base = null; draw(); } return; }
+  const h = hit(e.offsetX, e.offsetY), tip = $('#tip');
+  if (!h) { tip.style.display = 'none'; return; }
+  tip.style.display = 'block'; tip.style.left = Math.min(e.offsetX + 14, W - 200) + 'px'; tip.style.top = (e.offsetY + 14) + 'px';
+  tip.innerHTML = h.html;
+});
+cv.addEventListener('pointerleave', () => { $('#tip').style.display = 'none'; });
+cv.addEventListener('pointerup', e => {
+  const was = drag; drag = null; if (!was || was.moved) return;
+  const h = hit(e.offsetX, e.offsetY); if (!h) return;
+  if (h.node && h.node.kind === 'word') { selectWordEdges(h.node.id); return; }
+  if (h.word) { $('#qword').value = h.word; tab('teach'); $('#qword').focus(); }
+});
+cv.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.offsetX, e.offsetY, e.deltaY < 0 ? 1.18 : 1 / 1.18); }, {passive: false});
+function zoomAt(sx, sy, f) { const [wx, wy] = toWorld(sx, sy); view.k = Math.max(.8, Math.min(40, view.k * f)); const [nx, ny] = toWorld(sx, sy); view.x += wx - nx; view.y += wy - ny; target = null; base = null; draw(); }
+$('#zin').onclick = () => zoomAt(W / 2, H / 2, 1.5); $('#zout').onclick = () => zoomAt(W / 2, H / 2, 1 / 1.5); $('#zfit').onclick = () => fit(false);
+function hit(sx, sy) {
+  for (const n of G.nodes) { const p = pos.get(n.id); if (!p) continue; let [x, y] = toScreen(...p); if (n.kind === 'word' && n.sx != null) { x = n.sx; y = n.sy; }
+    if (Math.hypot(x - sx, y - sy) < (n.kind === 'word' ? 14 : 7)) {
+      const out = G.edges.filter(e => e.src === n.id), inn = G.edges.filter(e => e.dst === n.id);
+      const html = n.kind === 'word' ? `<b>${esc(n.label)}</b> · learned word<br>${inn.length} incoming, ${out.length} outgoing edges${n.consolidated ? ' · consolidated' : ''}<br><small>click to edit its edges</small>`
+        : `<b>engram “${esc(n.word)}”</b><br>strength ${n.s.toFixed(2)} · fired ${n.fires}×<br>${out.map(e => esc(REL_TXT[e.rel] || e.rel) + ' ' + esc(nameOf(e.dst)) + ' (w ' + e.w.toFixed(2) + ')').join('<br>')}`;
+      return {node: n, html};
+    } }
+  const [wx, wy] = toWorld(sx, sy); let best = -1, bd = 1e9; const r = 9 / (Math.min(W, H) * view.k);
+  for (let i = 0; i < VOCAB.length; i++) { const [x, y] = wxy(i), d = (x - wx) ** 2 + (y - wy) ** 2; if (d < bd) { bd = d; best = i; } }
+  if (best >= 0 && Math.sqrt(bd) < r * 2) return {word: VOCAB[best], html: `<b>${esc(VOCAB[best])}</b><br><small>click to show it to the brain</small>`};
+  return null;
+}
+const nameOf = id => { const n = G.nodes.find(n => n.id === id); return n ? (n.kind === 'word' ? n.label : '“' + n.word + '”') : '#' + id; };
+
+/* ---------- teach ---------- */
+function suggestions() {
+  const known = new Set(G.nodes.filter(n => n.kind === 'percept').map(n => n.word));
+  const words = G.nodes.filter(n => n.kind === 'word').map(n => n.label);
+  const pool = [];
+  if (CATS) { for (const c of CATS.categories) if (words.includes(c)) pool.push(...CATS.test[c].slice(0, 2)); }
+  const extra = ['hammer', 'paris', 'happiness', 'dragon', 'robot', 'teacher', 'jazz'];
+  const pick = [...pool.filter(w => !known.has(w)).slice(0, 5), ...extra.filter(w => VIDX.has(w)).slice(0, 4)];
+  $('#sugg').innerHTML = pick.map(w => `<button class="chip" type="button">${esc(w)}</button>`).join('');
+}
+$('#sugg').addEventListener('click', e => { if (e.target.matches('.chip')) { $('#qword').value = e.target.textContent; ask(); } });
+$('#qform').addEventListener('submit', e => { e.preventDefault(); ask(); });
+function ask() {
+  const w = $('#qword').value.trim().toLowerCase(), frame = $('#frame').value; if (!w) return;
+  let r; try { r = call('query', {text: w, frame}); } catch (err) { $('#reply').innerHTML = `<div class="reply wrong"><p class="say">${esc(err.message)}</p><p class="note">Try another word: the senses only cover the ${VOCAB.length.toLocaleString()} most common English words.</p></div>`; return; }
+  state.last = r; state.subject = w;
+  pulse = {t: 1, word: frame.endsWith('/word') ? null : w, near: (r.profile?.nearest || []).map(n => n.unit), trace: r.trace};
+  animate(); renderReply(r);
+}
+function verdictChip(v) { return v ? `<span class="verdict ${v === 'composite' ? 'ambiguous' : v}">${v}</span>` : ''; }
+function gauge(p) {
+  if (!p || p.eps0 == null) return '';
+  const max = Math.max(p.theta_novel * 2, p.eps0 * 1.1), th = p.theta_novel / max * 100, at = Math.min(100, p.eps0 / max * 100);
+  return `<div class="gauge" style="--th:${th}%"><div class="track"><span class="pin" style="left:calc(${at}% - 1px)"></span></div><div class="lbl"><span>familiar</span><span>prediction error ε₀ = <span class="num">${p.eps0.toFixed(2)}</span> · threshold ${p.theta_novel}</span><span>novel</span></div></div>`;
+}
+function nearList(p) {
+  if (!p || !p.nearest?.length) return '';
+  return `<ul class="why"><li>Closest engrams: ${p.nearest.slice(0, 4).map(n => `<code>${esc(n.word)}</code>${n.named ? ' (' + esc(n.named) + ')' : ''}`).join(', ')}</li></ul>`;
+}
+function traceList(tr) {
+  if (!tr?.length) return '';
+  return `<ul class="why">${tr.map(t => `<li><code>${esc(t.src_name)} —${esc(t.rel)}→ ${esc(t.dst_name)}</code> · w ${t.w.toFixed(2)}${t.consolidated ? ' · consolidated' : ''}</li>`).join('')}</ul>`;
+}
+function subjText(r) { return r.meta.about ? '“' + r.meta.about + '”' : '“' + state.subject + '”'; }
+function renderReply(r) {
+  const el = $('#reply');
+  if (r.kind === 'answer' || r.kind === 'confirm') {
+    const rel = r.meta.path?.[r.meta.path.length - 1];
+    const sent = rel === 'named' ? `“${esc(state.subject)}” is a <em>${esc(r.answer)}</em>.` : `${esc(subjText(r))} ${esc(REL_TXT[rel] || rel)} <em>${esc(r.answer)}</em>.`;
+    el.innerHTML = `<div class="reply"><p class="say">${r.kind === 'confirm' ? 'Not sure. Is it a <em>' + esc(r.answer) + '</em>?' : sent}</p>
+      ${verdictChip(r.verdict)}<span class="note">confidence <span class="num">${pct(r.confidence)}</span> · ${r.ms} ms</span>${gauge(r.profile)}${traceList(r.trace)}${nearList(r.profile)}
+      <div class="actions"><button class="btn yes" data-f="1">Right · +1</button><button class="btn no" data-f="-1">Wrong · −1</button></div></div>`;
+  } else if (r.kind === 'ask' && r.meta.needs === 'example') {
+    el.innerHTML = `<div class="reply asks"><p class="say">I don't know the word <em>${esc(r.meta.about)}</em>. Show me one?</p><p class="note">Type an example of it; I'll look at that word instead.</p>
+      <form class="ask-row" id="exform"><input type="text" id="exword" placeholder="an example word" autocomplete="off"><button class="btn go">Show</button></form></div>`;
+    $('#exform').onsubmit = e => { e.preventDefault(); $('#qword').value = $('#exword').value; $('#frame').value = 'WHAT-IS'; ask(); };
+  } else if (r.kind === 'ask') {
+    const rel = r.meta.path?.[0], about = r.meta.about;
+    const q = rel === 'named' ? (about ? `What is a <em>${esc(about)}</em>?` : `I don't know this one. What is <em>“${esc(state.subject)}”</em>?`)
+      : `I know ${about ? '<em>' + esc(about) + '</em>' : 'it'}, but ${esc(REL_TXT[rel] || rel)} what?`;
+    el.innerHTML = `<div class="reply asks"><p class="say">${q}</p>${verdictChip(r.verdict)}${gauge(r.profile)}${nearList(r.profile)}
+      <form class="ask-row" id="hform" style="margin-top:10px"><input type="text" id="hword" placeholder="your answer, one word" autocomplete="off" autocapitalize="off"><button class="btn go">Tell it</button></form>
+      <p class="note" style="margin-top:6px">Your word won't be stored. The brain will say it back as a proposal for you to confirm.</p></div>`;
+    $('#hform').onsubmit = e => { e.preventDefault(); const w = $('#hword').value.trim(); if (!w) return; try { renderProposal(call("hear", {word: w})); } catch (err) { $("#reply").insertAdjacentHTML("beforeend", `<p class="note bad">${esc(err.message)}</p>`); } };
+    $('#hword').focus();
+  }
+}
+function renderProposal(r) {
+  const rel = r.meta.path?.[0];
+  const subj = r.meta.about ? '<em>' + esc(r.meta.about) + '</em>' : '“' + esc(state.subject) + '”';
+  $('#reply').innerHTML = `<div class="reply asks"><p class="say">So ${subj} ${esc(REL_TXT[rel] || rel)} <em>${esc(r.answer)}</em>?</p>
+    <p class="note">Nothing forms until you confirm. A −1 leaves memory untouched.</p>
+    <div class="actions"><button class="btn yes" data-f="1">Yes · +1</button><button class="btn no" data-f="-1">No · −1</button></div></div>`;
+  state.last = r;
+}
+$('#reply').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (!b) return; judge(+b.dataset.f); });
+function judge(f) {
+  const r = call('judge', {f}), what = [];
+  for (const u of r.new_units) if (u.kind === 'percept') what.push('new engram ' + u.name);
+  for (const u of r.new_units) if (u.kind === 'word') what.push('new word ' + u.name);
+  for (const e of r.new_edges) what.push(`edge ${e.src_name} —${e.rel}→ ${e.dst_name}`);
+  if (!what.length) what.push(f > 0 ? `strengthened ${r.credited.length} edge${r.credited.length === 1 ? '' : 's'} on the path` : (r.credited.length ? `weakened ${r.credited.length} edge${r.credited.length === 1 ? '' : 's'} on the path` : 'nothing formed'));
+  if (r.sleep) what.push('slept: ' + (r.sleep.pruned_edges || 0) + ' edges pruned');
+  logLine(f, `<b>${esc(state.subject)}</b>: ${esc(what.join(' · '))} <span class="note num">m<sub>t</sub> ${r.m_t >= 0 ? '+' : ''}${r.m_t.toFixed(2)}</span>`);
+  $('#reply').innerHTML = `<div class="reply${f < 0 ? ' wrong' : ''}"><p class="note">${f > 0 ? 'Learned.' : 'Noted.'} ${esc(what.join(' · '))}. Modulator m<sub>t</sub> = ${r.m_t.toFixed(2)} (surprise ${r.surprise.toFixed(2)}).</p></div>`;
+  pulse.trace = []; refresh(); $('#qword').value = ''; $('#qword').focus();
+}
+function logLine(f, html) { const li = document.createElement('li'); li.innerHTML = `<span class="f ${f > 0 ? 'p' : f < 0 ? 'm' : ''}">${f > 0 ? '+1' : f < 0 ? '−1' : '··'}</span><span>${html}</span>`; $('#log').prepend(li); }
+function logAuto(n, txt) { logLine(0, `${esc(txt)} <span class="note">(${n} rounds)</span>`); }
+function spark() {
+  const h = G.history, s = $('#spark'); if (!s.clientWidth) return;
+  const w = s.clientWidth, H2 = s.clientHeight, win = 20, pts = [];
+  for (let i = 0; i < h.length; i++) { const a = h.slice(Math.max(0, i - win + 1), i + 1); pts.push(a.filter(x => x.ok).length / a.length); }
+  const n = pts.length; if (n < 2) { s.innerHTML = ''; return; }
+  const d = pts.map((p, i) => `${(i / (n - 1) * w).toFixed(1)},${(H2 - 3 - p * (H2 - 6)).toFixed(1)}`).join(' ');
+  s.innerHTML = `<line x1="0" x2="${w}" y1="${H2 - 3 - .9 * (H2 - 6)}" y2="${H2 - 3 - .9 * (H2 - 6)}" stroke="currentColor" stroke-opacity=".15" stroke-dasharray="3 3"/><polyline points="${d}" fill="none" stroke="var(--green-d)" stroke-width="2"/>`;
+  const last = h.slice(-40); $('#acc').textContent = last.length ? `last ${last.length}: ${pct(last.filter(x => x.ok).length / last.length)} right · ${h.length} answers` : '';
+}
+$('#auto').onclick = () => { const c = $('#autocat').value; const r = call('autopilot', {n: 30, categories: c ? [c] : null}); const ok = r.log.filter(x => x.f > 0 && x.kind !== 'ask').length, asked = r.log.filter(x => x.kind === 'ask').length;
+  logAuto(30, `Autopilot${c ? ' on ' + c : ''}: answered right ${ok}, asked ${asked}, wrong ${30 - ok - asked}`); refresh(); fit(false); };
+$('#facts').onclick = () => { const r = call('teach_facts', {rounds: 3}); logAuto(r.log.length, 'Category facts taught (is-a, has, lives-in)'); refresh(); };
+$('#fresh').onclick = () => { call('reset', {seed: Math.floor(Math.random() * 1000)}); $('#log').innerHTML = ''; $('#reply').innerHTML = '<div class="reply asks"><p class="say">Empty brain. It knows nothing: show it any word.</p></div>'; refresh(); fit(false); };
+$('#starter').onclick = () => { call('reset', {seed: 0}); $('#log').innerHTML = ''; $('#reply').innerHTML = ''; grow(STARTER); fit(false); };
+
+/* ---------- tabs ---------- */
+function tab(t) { $$('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.t === t)); $$('.pane').forEach(p => p.classList.toggle('on', p.id === 'p-' + t)); }
+$('.tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) tab(b.dataset.t); });
+
+/* ---------- exam ---------- */
+$('#runexam').onclick = () => {
+  const r = call('exam', {}); if (!r.rows.length) { $('#examout').innerHTML = '<p class="note">It knows no categories yet.</p>'; return; }
+  const asked = r.rows.filter(x => x.verdict === 'novel').length;
+  $('#examout').innerHTML = `<div class="row2" style="gap:28px"><div><div class="big">${pct(r.accuracy)}</div><span class="note">held-out words named correctly (${r.rows.filter(x => x.ok).length}/${r.rows.length})</span></div>
+    ${r.flagged_novel != null ? `<div><div class="big">${pct(r.flagged_novel)}</div><span class="note">never-taught words it would ask about</span></div>` : ''}</div>
+    <div class="scroll" style="margin-top:12px"><table><thead><tr><th>word</th><th>truth</th><th>its answer</th><th>verdict</th></tr></thead><tbody>
+    ${r.rows.map(x => `<tr><td>${esc(x.word)}</td><td>${esc(x.truth)}</td><td class="${x.ok ? 'ok' : 'bad'}">${esc(x.answer ?? '—')}</td><td>${verdictChip(x.verdict)}</td></tr>`).join('')}
+    ${r.unknown.map(x => `<tr><td>${esc(x.word)}</td><td class="note">${esc(x.truth)} (never taught)</td><td>${esc(x.answer ?? '—')}</td><td>${verdictChip(x.verdict)}</td></tr>`).join('')}</tbody></table></div>
+    <p class="note" style="margin-top:8px">Answers marked “novel” are ones the brain would turn into a question rather than assert.</p>`;
+};
+
+/* ---------- edit ---------- */
+function edgeList() {
+  const rel = G.edges.filter(e => e.rel !== 'named'), named = G.edges.filter(e => e.rel === 'named');
+  const opt = e => `<option value="${e.id}" ${state.cut === e.id ? 'selected' : ''}>${esc(nameOf(e.src))} —${esc(e.rel)}→ ${esc(nameOf(e.dst))}${e.lesioned ? ' (cut)' : ''}</option>`;
+  $('#edges').innerHTML = `<optgroup label="facts between words">${rel.map(opt).join('')}</optgroup><optgroup label="engram → word">${named.map(opt).join('')}</optgroup>`;
+}
+function selectWordEdges(id) { state.cutWord = id; const e = G.edges.find(e => e.dst === id && e.rel !== 'named') || G.edges.find(e => e.src === id) || G.edges.find(e => e.dst === id); if (e) { state.cut = e.id; edgeList(); } tab('edit'); draw(); }
+$('#cut').onclick = () => {
+  const id = +$('#edges').value; if (isNaN(id)) return;
+  const e = G.edges.find(x => x.id === id), frame = e && e.rel !== 'named' ? ({'is-a': 'IS-A', has: 'HAS', 'lives-in': 'LIVES-IN'}[e.rel] || 'WHAT-IS') : 'WHAT-IS';
+  const r = call('predict_lesion', {edge: id, frame}); state.cut = id;
+  $('#editout').innerHTML = `<p style="margin-top:12px"><b>${esc(r.edge.src_name)} —${esc(r.edge.rel)}→ ${esc(r.edge.dst_name)}</b> cut. Predictions correct on <b class="num">${r.rows.filter(x => x.hit).length}/${r.rows.length}</b> probes.</p>
+    <div class="scroll"><table><thead><tr><th>probe</th><th>before</th><th>predicted</th><th>actual</th><th></th></tr></thead><tbody>
+    ${r.rows.map(x => `<tr><td>${esc(x.word)} <span class="note">${frame === 'WHAT-IS' ? '' : FRAME_Q[frame]}</span></td><td>${esc(x.before ?? '—')}</td><td>${esc(x.after ?? '—')}</td><td>${esc(x.actual ?? '—')}</td><td class="${x.hit ? 'ok' : 'bad'}">${x.hit ? '✓' : '✗'}</td></tr>`).join('')}</tbody></table></div>`;
+  $('#restore').disabled = false; refresh();
+};
+$('#restore').onclick = () => { if (state.cut == null) return; call('lesion', {edge: state.cut, on: false}); $('#restore').disabled = true; $('#editout').innerHTML += '<p class="note">Edge restored; every answer is back.</p>'; refresh(); };
+
+/* ---------- sleep / inside ---------- */
+$('#dosleep').onclick = () => { const b = G.stats; const r = call('sleep'); refresh(); const a = G.stats;
+  $('#sleepout').innerHTML = `<table style="margin-top:12px"><tbody><tr><td>engrams merged</td><td class="r num">${r.merged ?? 0}</td></tr><tr><td>provisional edges downscaled</td><td class="r num">${r.downscaled ?? 0}</td></tr><tr><td>edges pruned</td><td class="r num">${r.pruned_edges ?? 0}</td></tr><tr><td>engrams pruned</td><td class="r num">${r.pruned_units ?? 0}</td></tr><tr><td>edges before → after</td><td class="r num">${b.edges} → ${a.edges}</td></tr><tr><td>memory</td><td class="r num">${b.memory_kb} → ${a.memory_kb} KB</td></tr></tbody></table>`; };
+$('#runaudit').onclick = () => { const t = performance.now(), r = call('audit'), ms = Math.round(performance.now() - t);
+  $('#auditout').innerHTML = `<p style="margin-top:10px"><span class="big ${r.clean === r.total ? 'ok' : 'bad'}">${r.clean}/${r.total}</span> <span class="note">update functions clean · ${ms} ms</span></p><p class="note">${r.functions.map(f => `<code>${esc(f)}</code>`).join(' · ')}</p>`;
+  $('#cfgout').innerHTML = 'Config: <code>store=episodic · encoder=frozen (GloVe) · code=dense · consolidation=offline · θ<sub>novel</sub>=3.9 · maturity k=3 teachers</code>'; };
+
+/* ---------- evidence ---------- */
+const ARM = {sni: ['SNI (±1 only)', 'var(--green-d)', 3], sni_1teacher: ['SNI, one teacher', 'var(--green-d)', 1.2, '4 3'], mlp_sgd_labels: ['MLP backprop, labels', 'var(--bad)', 2], mlp_sgd_bandit: ['MLP backprop, ±1', 'var(--coral-d)', 2, '5 4'],
+  ncm_labels: ['Nearest class mean, labels', 'var(--violet-d)', 2], simplecil: ['SimpleCIL', '#7d8f89', 1.2], ranpac: ['RanPAC', '#9aa9a4', 1.2, '2 3'], slda: ['SLDA', '#6f817b', 1.2, '6 3'], knn_graph: ['kNN graph', '#8a9a95', 1.2, '1 3']};
+function lineChart(svg, keys, xs, series, xlab) {
+  const draw = () => {
+    const w = svg.clientWidth, h = svg.clientHeight, L = 40, R = 12, T = 10, B = 34, small = w < 520;
+    const X = i => L + (xs.length > 1 ? (xs[i] - xs[0]) / (xs[xs.length - 1] - xs[0]) : 0) * (w - L - R), Y = v => T + (1 - v) * (h - T - B);
+    let s = '';
+    for (const v of [0, .25, .5, .75, 1]) s += `<line x1="${L}" x2="${w - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="currentColor" stroke-opacity=".12"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" font-size="12" fill="currentColor" fill-opacity=".6">${v * 100}%</text>`;
+    xs.forEach((x, i) => { if (!small || i % 2 === 0 || i === xs.length - 1) s += `<text x="${X(i)}" y="${h - B + 18}" text-anchor="middle" font-size="12" fill="currentColor" fill-opacity=".6">${x}</text>`; });
+    s += `<text x="${(L + w - R) / 2}" y="${h - 4}" text-anchor="middle" font-size="12" fill="currentColor" fill-opacity=".6">${xlab}</text>`;
+    for (const [k, v] of series) { const [, col, sw, dash] = ARM[k] || [k, '#888', 1.2];
+      const band = v.map((p, i) => `${X(i)},${Y(p[2])}`).concat(v.map((p, i) => `${X(i)},${Y(p[1])}`).reverse()).join(' ');
+      s += `<polygon points="${band}" fill="${col}" fill-opacity="${k === 'sni' ? .16 : .06}"/>`;
+      s += `<polyline points="${v.map((p, i) => `${X(i)},${Y(p[0])}`).join(' ')}" fill="none" stroke="${col}" stroke-width="${sw}" ${dash ? `stroke-dasharray="${dash}"` : ''}/>`; }
+    svg.innerHTML = s;
+  };
+  new ResizeObserver(draw).observe(svg);
+  keys.innerHTML = series.map(([k]) => { const [n, c, , d] = ARM[k] || [k, '#888']; return `<span><i style="background:${c};${d ? 'opacity:.7' : ''}"></i>${n}</span>`; }).join('');
+}
+async function evidence() {
+  let B; try { B = await fetch('bench.json').then(r => r.json()); } catch { $('#evlede').textContent = 'Benchmark results not bundled with this build.'; return; }
+  const e1 = B.E1.arms, e2 = B.E2.arms, e3 = B.E3.arms, e4 = B.E4, f = a => pct(a[0]), ci = a => `${pct(a[0])} <span class="note">[${pct(a[1])}–${pct(a[2])}]</span>`;
+  const ns = B.meta.seeds.length;
+  $('#evlede').innerHTML = `Word world: 17 categories, 10 training words each, held-out words for testing; frozen GloVe perception for every learner. ${ns} seeds, means with 95% bootstrap intervals. Exploratory, not a confirmed result of the pre-registered program.`;
+  const best = Object.entries(e1).filter(([k]) => !k.startsWith('sni') && !k.startsWith('mlp')).sort((a, b) => b[1].final_seen_acc[0] - a[1].final_seen_acc[0])[0];
+  $('#findings').innerHTML = `
+    <div class="finding win"><div class="big">${f(e1.sni.final_seen_acc)}</div><p>held-out accuracy after 5 sequential tasks without replay, against <b>${f(e1.mlp_sgd_labels.final_seen_acc)}</b> for a backprop MLP given full labels. Backprop forgets task 1 by ${f(e1.mlp_sgd_labels.task1_forgetting)}; SNI by ${f(e1.sni.task1_forgetting)}.</p></div>
+    <div class="finding win"><div class="big">${f(e2.sni.test_acc.at(-1))}</div><p>after one pass from ±1 judgements, against <b>${f(e2.mlp_sgd_bandit.test_acc.at(-1))}</b> for the same MLP trained by policy gradient on ±1, and <b>${f(e2.mlp_sgd_labels.test_acc.at(-1))}</b> for that MLP given full labels. Caveat: SNI also hears the teacher's word when it asks; the bandit MLP cannot ask.</p></div>
+    <div class="finding loss"><div class="big">${f(best[1].final_seen_acc)}</div><p>for the strongest classical baseline (${esc((ARM[best[0]] || [best[0]])[0])}, given labels), which beats SNI on accuracy, retention (forgets ${f(e1[best[0]].task1_forgetting)}) and novelty detection. Closing that gap, without giving up ±1-only learning, is the next research step.</p></div>`;
+  const pick1 = ['sni', 'sni_1teacher', 'ncm_labels', best[0], 'slda', 'mlp_sgd_labels', 'mlp_sgd_bandit'].filter((k, i, a) => e1[k] && a.indexOf(k) === i);
+  lineChart($('#c1'), $('#k1'), [1, 2, 3, 4, 5], pick1.map(k => [k, e1[k].seen_acc]), 'after task');
+  const pick2 = ['sni', 'ncm_labels', 'slda', 'mlp_sgd_labels', 'mlp_sgd_bandit'].filter(k => e2[k]);
+  lineChart($('#c2'), $('#k2'), B.E2.x, pick2.map(k => [k, e2[k].test_acc]), 'interactions');
+  $('#t3').innerHTML = `<table><thead><tr><th>learner</th><th class="r">AUROC</th><th class="r">held-out acc.</th></tr></thead><tbody>${Object.entries(e3).map(([k, v]) => `<tr><td>${esc((ARM[k] || [k])[0])}</td><td class="r num">${ci(v.auroc)}</td><td class="r num">${f(v.taught_test_acc)}</td></tr>`).join('')}</tbody></table>
+    ${e3.sni.untaught_flagged_novel ? `<p class="note" style="margin-top:8px">SNI flags ${f(e3.sni.untaught_flagged_novel)} of never-taught words as novel (and asks). On taught held-out words it answers right ${f(e3.sni.taught_answer_correct)}, asks ${f(e3.sni.taught_ask)}, and is wrong only ${f(e3.sni.taught_answer_wrong)}: ${f(e3.sni.taught_precision_when_answering)} precision when it does answer.</p>` : ''}`;
+  $('#t4').innerHTML = `<div class="row2" style="gap:28px"><div><div class="big ok">${f(e4.changed_frac_not_uses)}</div><span class="note">of answers changed among probes that did not use the edge</span></div><div><div class="big">${f(e4.changed_frac_uses)}</div><span class="note">changed among probes whose answer path used it</span></div><div><div class="big">${f(e4.restored_frac)}</div><span class="note">restored exactly on undo</span></div></div>
+    <p class="note" style="margin-top:10px">Because every answer is a readable path, the effect of a cut can be computed before making it (exact by construction, so it is a property of explicit memory rather than a measured skill). A backprop network has no single-fact edit: what it knows is spread across all its weights.</p>`;
+  $('#disctext').innerHTML = `<p>${esc(B.meta.disclosure)}</p><p>${esc(B.meta.ci)}. Config: <code>${esc(JSON.stringify(B.meta.config.yaml))}</code>. Code digests: <code>${esc(Object.entries(B.meta.code_digest).map(([k, v]) => k + ' ' + v).join(' · '))}</code>.</p>`;
+}
+
+window.addEventListener('load', () => { start(); evidence(); });
+}
+</script>
+</body>
+</html>
